@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCQ Exam Tool</title>
+<style>
+body { font-family: Arial; margin: 20px; }
+#timer { font-size: 20px; font-weight: bold; }
+.question { margin-bottom: 20px; padding: 10px; border-radius: 6px; }
+.correct { background-color: #d4edda; }
+.incorrect { background-color: #f8d7da; }
+.meta { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+.hidden { display: none; }
+button { margin-right: 10px; }
+</style>
+</head>
+<body>
+
+<h2>The Present Tense - Intro Quiz (15 minutes)</h2>
+<p><b>Passing Marks: 65%</b></p>
+<div id="timer">Time Left: 15:00</div>
+<form id="quizForm"></form>
+<button onclick="submitQuiz()">Submit</button>
+<button onclick="window.print()" class="hidden" id="printBtn">Print Result</button>
+
+<div id="result" class="hidden"></div>
+
+<script>
+const questions = [
+  {
+    q: "Select the verb that is conjugated into present continuous: It ________ everything you say.",
+    options: ["repeating", "is repeating", "repeats", "repeat"],
+    answer: "is repeating",
+    topic: "Present Continuous"
+  },
+  {
+    q: "Identify the verb tense or mood of the bolded word(s): She was riding her bicycle. (was riding)",
+    options: ["Simple present", "Present continuous", "Imperative", "None of the above"],
+    answer: "None of the above",
+    topic: "Tense Identification"
+  },
+  {
+    q: "Which sentence is written in the simple present?",
+    options: ["I will listen to my parents.", "We listen to our parents.", "I am listening to my parents.", "Listen to your parents."],
+    answer: "We listen to our parents.",
+    topic: "Simple Present"
+  },
+  {
+    q: "Select the verb that is conjugated into simple present: We ________ television every night.",
+    options: ["are watching", "watch", "watched", "watches"],
+    answer: "watch",
+    topic: "Simple Present"
+  },
+  {
+    q: "When using the imperative to address multiple people, an -s/-es must be added to the base form of the verb.",
+    options: ["True, with all verbs", "False", "True, but only with regular verbs; irregular verbs are conjugated differently", "True, but only with irregular verbs"],
+    answer: "False",
+    topic: "Imperatives"
+  },
+  {
+    q: "General uses for the simple present tense include:",
+    options: ["Giving commands, making requests and offering warnings", "Simultaneous events, interrupted events and events in sequence", "Repeated activities, factual information and describing conditions", "Changing situations and activities in progress"],
+    answer: "Repeated activities, factual information and describing conditions",
+    topic: "Simple Present"
+  },
+  {
+    q: "Which of the following time expressions is not commonly used with the present continuous (present progressive) tense?",
+    options: ["Seldom", "Right now", "Always", "This week"],
+    answer: "Seldom",
+    topic: "Present Continuous"
+  },
+  {
+    q: "Stative verbs often have different meanings in the present continuous tense than they do in the simple present. Which of the following stative verbs carry this property?",
+    options: ["Think", "Mean", "Own", "Believe"],
+    answer: "Think",
+    topic: "Stative Verbs"
+  }
+];
+
+// Heuristic CEFR + Difficulty Calculator
+function assessQuestion(q) {
+  let score = 0;
+
+  // Heuristics
+  if (q.q.length > 100) score += 2;
+  if (q.options.length > 3) score += 1;
+  if (q.q.toLowerCase().includes("identify") || q.q.toLowerCase().includes("which")) score += 1;
+  if (q.q.toLowerCase().includes("not") || q.q.toLowerCase().includes("except")) score += 2;
+  if (q.topic.includes("Stative") || q.topic.includes("Tense")) score += 2;
+
+  // CEFR Mapping
+  let level;
+  if (score <= 2) level = "A1";
+  else if (score <= 4) level = "A2";
+  else if (score <= 6) level = "B1";
+  else if (score <= 8) level = "B2";
+  else if (score <= 10) level = "C1";
+  else level = "C2";
+
+  // Difficulty Mapping
+  let difficulty;
+  if (score <= 3) difficulty = "Easy";
+  else if (score <= 7) difficulty = "Medium";
+  else difficulty = "Hard";
+
+  return { level, difficulty };
+}
+
+let shuffledQuestions = questions
+  .map(q => {
+    const meta = assessQuestion(q);
+    return { ...q, ...meta, options: [...q.options].sort(() => Math.random() - 0.5) };
+  })
+  .sort(() => Math.random() - 0.5);
+
+const form = document.getElementById('quizForm');
+
+shuffledQuestions.forEach((q, index) => {
+  const div = document.createElement('div');
+  div.className = 'question';
+
+  let optionsHTML = '';
+  q.options.forEach(opt => {
+    optionsHTML += `<label><input type="radio" name="q${index}" value="${opt}"> ${opt}</label><br>`;
+  });
+
+  div.innerHTML = `
+    <div class="meta">Level ${q.level} - ${q.difficulty}</div>
+    <p><b>${index + 1}. ${q.q}</b></p>
+    ${optionsHTML}
+  `;
+
+  form.appendChild(div);
+});
+
+// Timer
+let time = 900;
+const timerEl = document.getElementById('timer');
+const timer = setInterval(() => {
+  let minutes = Math.floor(time / 60);
+  let seconds = time % 60;
+  timerEl.textContent = `Time Left: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  time--;
+  if (time < 0) {
+    clearInterval(timer);
+    submitQuiz();
+  }
+}, 1000);
+
+function submitQuiz() {
+  clearInterval(timer);
+  let score = 0;
+  let incorrectTopics = new Set();
+
+  const resultDiv = document.getElementById('result');
+  resultDiv.innerHTML = "";
+
+  shuffledQuestions.forEach((q, index) => {
+    const selected = document.querySelector(`input[name=q${index}]:checked`);
+    const userAnswer = selected ? selected.value : "No answer";
+    const isCorrect = userAnswer === q.answer;
+
+    if (isCorrect) {
+      score++;
+    } else {
+      incorrectTopics.add(q.topic);
+    }
+
+    const review = document.createElement('div');
+    review.className = `question ${isCorrect ? 'correct' : 'incorrect'}`;
+
+    review.innerHTML = `
+      <div class="meta">Level ${q.level} - ${q.difficulty}</div>
+      <p><b>Q${index + 1}: ${q.q}</b></p>
+      <p>Your Answer: ${userAnswer}</p>
+      <p>Correct Answer: ${q.answer}</p>
+      <p><b>${isCorrect ? 'Correct' : 'Incorrect'}</b></p>
+    `;
+
+    resultDiv.appendChild(review);
+  });
+
+  const percentage = Math.round((score / questions.length) * 100);
+  const passText = percentage >= 65 ? "Passed!" : "Failed!";
+
+  let summaryHTML = `<h3>Your Score: ${score}/${questions.length} (${percentage}%) - ${passText}</h3>`;
+
+  if (incorrectTopics.size > 0) {
+    summaryHTML += `<p><b>Suggested Review Topics:</b> ${Array.from(incorrectTopics).join(', ')}</p>`;
+  }
+
+  resultDiv.insertAdjacentHTML('afterbegin', summaryHTML);
+
+  resultDiv.classList.remove('hidden');
+  document.getElementById('printBtn').classList.remove('hidden');
+}
+</script>
+
+</body>
+</html>
